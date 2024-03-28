@@ -1,0 +1,164 @@
+
+#q5 : 원격수업환경 (q4,q6,q8)
+#q7  : 학습자 태도
+#---강의---
+#q9 - q12 : 교육자
+#q13 - 15 : 교육컨텐츠
+#q16 - 18 / q22_1 : 이론강의
+#q19 - 21 / q22_2: 실습관련
+#q23 - q25 : 과제
+#q26 - q30 : 질문&피드백
+#q31 - q34 : 시스템
+
+#---만족도---
+#q35 - q37 : 학습성취도
+#q38 - q41 : 전반적만족도
+#q42 - q44 : 장점및 개선점
+
+library(dplyr)
+detach(p_question)
+library(gmodels)
+table(p_question$major)
+4 3 4 4 2 5 4 3 3
+p_question %>% group_by(major) %>% 
+  summarise(count = n())
+
+#전공별 상위개념 평균값
+p_question %>% filter(major=="휴먼,로봇융합전공") %>% 
+  summarise( mean.remote = round(mean(remote_en),2),
+             mean.learn = round(mean(learn_att),2),
+             mean.educator = round(mean(educator),2),
+             mean.contents = round(mean(contents),2),
+             mean.th = round(mean(theory),2),
+             mean.prac = round(mean(practice),2),
+             mean.task = round(mean(task),2),
+             mean.fe = round(mean(feedback),2),
+             mean.sy = round(mean(system),2),
+             mean.ach = round(mean(achiev),2),
+             mean.sat = round(mean(satisfaction),2))
+
+#---------------------------
+#해야할것 (이론 : 교육자 - q10_1,q11_1,q12_1(수업 준비성)
+#                 교육 콘텐츠 - q14_1(원활한 자료제공),q15_1 (자료의 질)
+#                 이론 수업 - q18_1 (수업 이해 정도)
+#                 장점 - q22_1(오프라인 대비 장점)
+#         (실습:  교육자 - q10_2,q11_2,q12_2
+#                 교육 콘텐츠 - q14_2,q15_2
+#                 이론 수업 - q18_2
+#                 실습 - q19(원활한 실습 여부),q20(실습 시간 적절성),q21(실습 만족도)
+#                 장점 - q22_2(오프라인 대비 장점))
+library(ggplot2)
+attach(survey)
+library(gmodels)
+library(dplyr)
+survey %>% group_by(major) %>% 
+  summarise(count = n(),
+            mean = sum(q22_2)/count)
+
+
+CrossTable(major,q22_2,prop.c = F,prop.chisq = F,prop.t = F,chisq = T,format="SPSS")
+
+#전공별 - q27(피드백 유무) q32(끊김 수준) q33 (시스템 오류 빈도) q35(오프라인 대비 흥미)  q41(수업 선호 형태)
+survey %>% group_by(major) %>% 
+  summarise(count = n(),
+            mean = sum(q9_1)/count)
+
+table(q41)
+CrossTable(major,q41,prop.c = F,prop.chisq = F,prop.t = F,chisq = T,format="SPSS")
+fisher.test()
+#학년별 - q23(과제량) q25(과제 희망 주기) q31(E-learning 편의성) q36(오프라인 대비 이해도) q37(오프리인 대비 실습 유익 정도) q38(오프라인 대비 전달력)
+
+survey %>% group_by(grade) %>% 
+  summarise(count = n(),
+            mean = sum(q38)/count)
+table(p_question$task)
+CrossTable(grade,q38,prop.c = F,prop.chisq = F,prop.t = F,chisq = T,format="SPSS")
+
+#과제별 학습성취도 문항(q35-오프라인 대비 흥미,q36-오프라인 대비 이론 이해도,q37-오프라인 대비 실습 유익 정도 교차분석)
+CrossTable(survey$q23,survey$q37,prop.c=F,prop.chisq=F,prop.t=F,chisq = T,format = "SPSS")
+attach(survey)
+round(prop.table(table(q23))*100,2)
+table(p_question$achiev)
+
+#만족도 Y = 원격수업 : q5 / 교육자 ;q11 q10 / 콘텐츠 : q15 / 이론수업 : q18 / 실습 수업 : q20 / 과제 : q23 q24 / 시스템 : q31
+#성취도 Y = 오프라인 이해 q36 / q37 
+attach(survey)
+remote_en = q5
+educator = (q10_1+q10_2+q11_1+q11_2)/4
+contents = (q15_1+q15_2)/2
+theory =(q18_1+q18_2)/2 
+practice = q20
+task = (q23+q24)/2
+system = q31
+a <- data.frame(remote_en,educator,contents,theory,practice,task,system)
+a
+sat_a <- data.frame(a,y=survey$q40)
+str(sat_a)
+lm_model <- lm(y ~ remote_en+educator + contents+theory+practice+task+system,data = sat_a)
+
+#만족도 회귀분석
+summary(lm_model)
+library(car)
+vif(lm_model)
+step <- stepAIC(lm_model,direction = "backward")
+
+#오프라인 대비 이론 이해도 회귀분석
+ach_a1 <- data.frame(a,y=survey$q36)
+str(ach_a1)
+lm_model2 <- lm(y ~ remote_en+educator + contents+theory+practice+task+system,data = ach_a1)
+summary(lm_model2)
+vif(lm_model2)
+step <- stepAIC(lm_model2,direction = "both")
+lm_model2 <- lm(y ~ contents+theory+practice+task+system,data=ach_a1)
+summary(lm_model2)
+
+#오프라인 대비 실습 유익 정도 회귀 분석
+ach_a2 <- data.frame(a,y=survey$q37)
+str(ach_a2)
+lm_model3 <- lm(y ~ remote_en+educator + contents+theory+practice+task+system,data = ach_a2)
+summary(lm_model3)
+vif(lm_model3)
+step <- stepAIC(lm_model3,direction = "both")
+lm_model3 <- lm(y ~ remote_en+contents+system+practice,data=ach_a2)
+summary(lm_model3)
+
+
+attach(ori_survey)
+table(q24)
+round(prop.table(table(q35))*100,2)
+attach(survey)
+summary(q12_2)
+sd(q12_2)
+library(psych)
+describe(q40)
+
+a <- c(3.43,3.67,3.69,3.45,1.92,3.12,3.34,3.44,2.70)
+b <- c(0.98,0.89,0.92,0.96,0.80,0.93,0.94,0.86,1.15)
+
+mean(b)
+
+attach(survey)
+library(dplyr)
+table(sex)
+table(q23)
+table(ori_survey$q23)
+survey %>% group_by(q35) %>% 
+  summarise(mean_sat = mean(q40),
+            sd_sat = sd(q40))
+
+#학습성취도
+table(grade)
+survey %>% filter(grade!="1학년") %>% 
+  summarise(mean_q35 = mean(q35),
+            mean_q36 = mean(q36),
+            mean_q37 = mean(q37))
+(2.72+2.81+2.55)/3
+
+a <- survey %>% filter(grade!="1학년") %>% 
+  select(grade,q35,q36,q37)
+a
+library(gmodels)
+attach(a)
+library(descr)
+View(freq(q35))
+freq(q37)
